@@ -56,41 +56,39 @@ export function useChat() {
   const sendMessage = async () => {
     if (!inputValue.trim() || !activeChat) return;
 
+    const messageContent = inputValue.trim();
+    setInputValue('');
+    setIsTyping(true);
+
     try {
-      // Create a temporary user message for immediate display
-      const tempUserMessage: Message = {
-        id: `temp-${Date.now()}`,
-        role: 'user',
-        content: inputValue.trim(),
-        timestamp: new Date(),
-      };
+      console.log('Sending message:', messageContent);
       
-      // Update UI with user message
-      const updatedActiveChat = {
+      // Send user message to API and get the response
+      const userMessage = await chatApi.sendMessage(activeChat.id, messageContent);
+      console.log('User message sent:', userMessage);
+      
+      // Update chat with user message immediately
+      const chatWithUserMessage = {
         ...activeChat,
-        messages: [...activeChat.messages, tempUserMessage],
+        messages: [...activeChat.messages, userMessage],
         lastUpdated: new Date(),
       };
       
-      setActiveChat(updatedActiveChat);
+      setActiveChat(chatWithUserMessage);
       setChats(prevChats => 
         prevChats.map(chat => 
-          chat.id === activeChat.id ? updatedActiveChat : chat
+          chat.id === activeChat.id ? chatWithUserMessage : chat
         )
       );
-      setInputValue('');
-      setIsTyping(true);
-
-      // Send user message to API
-      const userMessage = await chatApi.sendMessage(activeChat.id, tempUserMessage.content);
       
       // Get AI response
-      const aiResponse = await chatApi.getAIResponse(activeChat.id, tempUserMessage.content);
+      const aiResponse = await chatApi.getAIResponse(activeChat.id, messageContent);
+      console.log('AI response received:', aiResponse);
       
-      // Replace temporary message with real messages
+      // Update chat with AI response
       const finalChat = {
-        ...activeChat,
-        messages: [...activeChat.messages.filter(m => !m.id.startsWith('temp-')), userMessage, aiResponse],
+        ...chatWithUserMessage,
+        messages: [...chatWithUserMessage.messages, aiResponse],
         lastUpdated: new Date(),
       };
       
@@ -100,9 +98,9 @@ export function useChat() {
           chat.id === activeChat.id ? finalChat : chat
         )
       );
-      setIsTyping(false);
     } catch (error) {
       console.error('Error sending message:', error);
+    } finally {
       setIsTyping(false);
     }
   };
