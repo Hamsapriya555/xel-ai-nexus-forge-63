@@ -80,7 +80,7 @@ const Navbar = () => {
                     Login
                   </Button>
                 </Link>
-                <Link to="/login">
+                <Link to="/signup">
                   <Button variant="glow" size="sm">
                     Sign up
                   </Button>
@@ -154,7 +154,7 @@ const Navbar = () => {
                     Login
                   </Link>
                   <Link
-                    to="/login"
+                    to="/signup"
                     onClick={() => setIsOpen(false)}
                     className="block px-3 py-2 rounded-md text-base font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                   >

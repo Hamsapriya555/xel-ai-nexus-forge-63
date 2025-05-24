@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
@@ -8,52 +9,55 @@ import { supabase } from '@/integrations/supabase/client';
 
 const AuthPage = () => {
   const location = useLocation();
-  const [isLogin, setIsLogin] = useState(location.pathname === '/login');
-  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
+  
+  // Determine if this is login or signup based on the route
+  const isLogin = location.pathname === '/login';
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     username: '',
     confirmPassword: '',
   });
+  
   const [errors, setErrors] = useState({
     email: '',
     password: '',
     username: '',
     confirmPassword: '',
   });
-
-  const { login, signup, user, isLoading } = useAuth();
-  const navigate = useNavigate();
-
-  // Update form mode based on route
-  useEffect(() => {
-    setIsLogin(location.pathname === '/login');
-  }, [location.pathname]);
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate, location]);
+  }, [user, navigate]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: '' }));
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const validateForm = () => {
-    let isValid = true;
     const newErrors = { email: '', password: '', username: '', confirmPassword: '' };
+    let isValid = true;
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = 'Please enter a valid email';
       isValid = false;
     }
 
@@ -84,22 +88,43 @@ const AuthPage = () => {
     return isValid;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
+    setLoading(true);
+    
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (error) throw error;
+        navigate('/dashboard');
       } else {
-        await signup(formData.email, formData.password, formData.username);
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              username: formData.username
+            }
+          }
+        });
+        
+        if (error) throw error;
+        navigate('/dashboard');
       }
-      
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
-    } catch (error) {
-      // Error is already handled in the auth context
+    } catch (error: any) {
+      setErrors(prev => ({ 
+        ...prev, 
+        email: error.message || (isLogin ? 'Login failed' : 'Signup failed')
+      }));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,10 +138,21 @@ const AuthPage = () => {
       });
       
       if (error) throw error;
-    } catch (error) {
-      console.error('Google login error:', error);
+    } catch (error: any) {
+      setErrors(prev => ({ 
+        ...prev, 
+        email: 'Google login failed. Please try again.'
+      }));
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 flex flex-col">
@@ -140,71 +176,104 @@ const AuthPage = () => {
           
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 p-6 sm:p-8 rounded-xl shadow-2xl">
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-              <InputField
-                id="email"
-                name="email"
-                type="email"
-                label="Email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleChange}
-                error={errors.email}
-                fullWidth
-              />
-              
-              {!isLogin && (
-                <InputField
-                  id="username"
-                  name="username"
-                  type="text"
-                  label="Username"
-                  placeholder="Choose a username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  error={errors.username}
-                  fullWidth
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter your email"
                 />
-              )}
-              
-              <div className="relative">
-                <InputField
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  label="Password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  error={errors.password}
-                  fullWidth
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-9 text-gray-400 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
+                {errors.email && (
+                  <p className="mt-1 text-sm text-red-400">{errors.email}</p>
+                )}
               </div>
               
               {!isLogin && (
-                <InputField
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  label="Confirm Password"
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  error={errors.confirmPassword}
-                  fullWidth
-                />
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Choose a username"
+                  />
+                  {errors.username && (
+                    <p className="mt-1 text-sm text-red-400">{errors.username}</p>
+                  )}
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="mt-1 text-sm text-red-400">{errors.password}</p>
+                )}
+              </div>
+              
+              {!isLogin && (
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                      placeholder="Confirm your password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
+                  )}
+                </div>
               )}
               
               <Button 
                 type="submit" 
                 variant="glow" 
-                isLoading={isLoading} 
+                isLoading={loading} 
                 fullWidth
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
               >
