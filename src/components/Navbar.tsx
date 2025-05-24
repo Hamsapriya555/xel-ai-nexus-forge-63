@@ -1,180 +1,171 @@
 
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, MessageSquare, Users, Home, User } from 'lucide-react';
+import Button from './Button';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast.success('Logged out successfully');
-      navigate('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      toast.error('Failed to log out');
-    }
-  };
-
-  const NavLinks = [
-    { title: "Home", path: "/" },
-    { title: "Chat", path: "/chat" },
-    { title: "Community", path: "/community" },
+  const navigation = [
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Chat', href: '/chat', icon: MessageSquare, protected: true },
+    { name: 'Community', href: '/community', icon: Users },
   ];
 
-  const navClasses = cn(
-    "fixed top-0 left-0 w-full z-50 transition-all duration-300 py-4 px-6 md:px-12",
-    {
-      "bg-xel-dark/80 backdrop-blur shadow-glow-sm": isScrolled,
-      "bg-transparent": !isScrolled,
-    }
-  );
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setIsOpen(false);
+  };
 
   return (
-    <nav className={navClasses}>
-      <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <Link to="/" className="flex items-center space-x-2">
-          <div className="text-2xl font-mono font-bold text-gradient">fake_by_Xel</div>
-        </Link>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="h-8 w-8 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">X</span>
+            </div>
+            <span className="font-space-grotesk font-bold text-xl">fake_by_Xel</span>
+          </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
-          <div className="flex space-x-8">
-            {NavLinks.map((link) => (
-              <Link 
-                key={link.path}
-                to={link.path}
-                className={cn(
-                  "relative font-medium text-sm transition-colors",
-                  "hover:text-primary before:absolute before:bottom-[-4px] before:left-0",
-                  "before:h-[2px] before:bg-primary before:transition-all before:duration-300",
-                  location.pathname === link.path 
-                    ? "text-primary before:w-full" 
-                    : "text-foreground/80 before:w-0 hover:before:w-full"
-                )}
-              >
-                {link.title}
-              </Link>
-            ))}
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) => {
+              if (item.protected && !user) return null;
+              
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive(item.href)
+                      ? 'text-primary bg-primary/10'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <item.icon size={16} />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
           </div>
-          <div className="flex space-x-4">
+
+          {/* Desktop Auth */}
+          <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-4">
-                <div className="text-sm font-medium text-foreground/80">
-                  Welcome, {user.name}
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center px-4 py-1 rounded-md text-sm font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-all"
-                >
-                  <LogOut size={16} className="mr-1" />
+                <Link to="/dashboard">
+                  <Button variant="outline" size="sm" className="flex items-center space-x-2">
+                    <User size={16} />
+                    <span>Dashboard</span>
+                  </Button>
+                </Link>
+                <Button onClick={handleLogout} variant="ghost" size="sm">
                   Logout
-                </button>
+                </Button>
               </div>
             ) : (
-              <>
-                <Link 
-                  to="/login" 
-                  className="px-4 py-1 rounded-md text-sm font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-all"
-                >
-                  Login
+              <div className="flex items-center space-x-4">
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">
+                    Login
+                  </Button>
                 </Link>
-                <Link 
-                  to="/signup" 
-                  className="btn-glow px-4 py-1 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
-                >
-                  Sign up
+                <Link to="/login">
+                  <Button variant="glow" size="sm">
+                    Sign up
+                  </Button>
                 </Link>
-              </>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Mobile Menu Button */}
-        <button 
-          className="md:hidden text-foreground"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X /> : <Menu />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      <div className={`
-        md:hidden fixed top-[72px] right-0 w-full h-screen transition-all duration-300 bg-background/95 backdrop-blur-md
-        ${mobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
-      `}>
-        <div className="flex flex-col p-6 space-y-6">
-          {NavLinks.map((link) => (
-            <Link 
-              key={link.path}
-              to={link.path}
-              onClick={() => setMobileMenuOpen(false)}
-              className={cn(
-                "text-lg font-medium py-2 border-b border-border",
-                location.pathname === link.path 
-                  ? "text-primary" 
-                  : "text-foreground/80"
-              )}
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsOpen(!isOpen)}
             >
-              {link.title}
-            </Link>
-          ))}
-          
-          {user ? (
-            <>
-              <div className="flex items-center py-2 border-b border-border">
-                <User size={20} className="mr-2 text-primary" />
-                <span className="text-lg font-medium">{user.name}</span>
-              </div>
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-3 rounded-md font-medium border border-primary/30 text-center text-primary flex items-center justify-center"
-              >
-                <LogOut size={18} className="mr-2" />
-                Logout
-              </button>
-            </>
-          ) : (
-            <div className="flex flex-col space-y-4 pt-4">
-              <Link 
-                to="/login" 
-                className="w-full py-3 rounded-md font-medium border border-primary/30 text-center text-primary"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Login
-              </Link>
-              <Link 
-                to="/signup" 
-                className="w-full py-3 rounded-md font-medium bg-primary text-center text-primary-foreground"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Sign up
-              </Link>
-            </div>
-          )}
+              {isOpen ? <X size={20} /> : <Menu size={20} />}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile Navigation */}
+      {isOpen && (
+        <div className="md:hidden">
+          <div className="px-2 pt-2 pb-3 space-y-1 bg-background border-b border-border">
+            {navigation.map((item) => {
+              if (item.protected && !user) return null;
+              
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                    isActive(item.href)
+                      ? 'text-primary bg-primary/10'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <item.icon size={20} />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+            
+            <div className="border-t border-border pt-4 mt-4">
+              {user ? (
+                <div className="space-y-2">
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <User size={20} />
+                    <span>Dashboard</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  >
+                    <span>Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link
+                    to="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-3 py-2 rounded-md text-base font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

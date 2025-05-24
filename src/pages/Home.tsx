@@ -134,7 +134,7 @@ const Home = () => {
             >
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-space-grotesk font-bold leading-tight">
                 <span className="text-gradient">Borrow intelligence.</span><br />
-                <span>{user ? `Welcome back, ${user.name}` : 'Build ideas. Welcome to Xel.'}</span>
+                <span>{user ? `Welcome back, ${user.email?.split('@')[0]}` : 'Build ideas. Welcome to Xel.'}</span>
               </h1>
             </div>
             
@@ -161,13 +161,13 @@ const Home = () => {
                 transform: isLoaded ? 'translateY(0)' : 'translateY(20px)'
               }}
             >
-              <Link to="/chat">
+              <Link to={user ? "/chat" : "/login"}>
                 <Button variant="glow" size="lg" className="group">
                   {user ? "Continue chatting" : "Start chatting now"}
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
                 </Button>
               </Link>
-              <Link to={user ? "/community" : "/signup"}>
+              <Link to={user ? "/community" : "/login"}>
                 <Button variant="outline" size="lg">
                   {user ? "Explore community" : "Join community"}
                 </Button>
