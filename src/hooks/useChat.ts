@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { chatApi } from '@/lib/api';
 import { Chat, Message } from '@/types/chat';
@@ -63,41 +62,31 @@ export function useChat() {
     try {
       console.log('Sending message:', messageContent);
       
-      // Send user message to API and get the response
-      const userMessage = await chatApi.sendMessage(activeChat.id, messageContent);
-      console.log('User message sent:', userMessage);
+      // Send user message to API (this adds the message to the chat internally)
+      await chatApi.sendMessage(activeChat.id, messageContent);
+      console.log('User message sent to API');
       
-      // Update chat with user message immediately
-      const chatWithUserMessage = {
-        ...activeChat,
-        messages: [...activeChat.messages, userMessage],
-        lastUpdated: new Date(),
-      };
+      // Get updated chat with the user message from API
+      const updatedChats = await chatApi.getChats();
+      const updatedActiveChat = updatedChats.find(chat => chat.id === activeChat.id);
       
-      setActiveChat(chatWithUserMessage);
-      setChats(prevChats => 
-        prevChats.map(chat => 
-          chat.id === activeChat.id ? chatWithUserMessage : chat
-        )
-      );
+      if (updatedActiveChat) {
+        setActiveChat(updatedActiveChat);
+        setChats(updatedChats);
+      }
       
       // Get AI response
       const aiResponse = await chatApi.getAIResponse(activeChat.id, messageContent);
       console.log('AI response received:', aiResponse);
       
-      // Update chat with AI response
-      const finalChat = {
-        ...chatWithUserMessage,
-        messages: [...chatWithUserMessage.messages, aiResponse],
-        lastUpdated: new Date(),
-      };
+      // Get final updated chat with AI response
+      const finalChats = await chatApi.getChats();
+      const finalActiveChat = finalChats.find(chat => chat.id === activeChat.id);
       
-      setActiveChat(finalChat);
-      setChats(prevChats => 
-        prevChats.map(chat => 
-          chat.id === activeChat.id ? finalChat : chat
-        )
-      );
+      if (finalActiveChat) {
+        setActiveChat(finalActiveChat);
+        setChats(finalChats);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
     } finally {
