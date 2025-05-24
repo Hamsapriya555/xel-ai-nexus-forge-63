@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Download, Menu, X } from 'lucide-react';
+import { Send, Menu, X, Download, Bot, User } from 'lucide-react';
 import Button from '@/components/Button';
 import { useMessages } from '@/hooks/useMessages';
+import { useAIChat } from '@/hooks/useAIChat';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Chat = () => {
@@ -11,19 +12,30 @@ const Chat = () => {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, isSending, sendMessage, downloadChatHistory } = useMessages();
+  const { generateAIResponse, isAITyping } = useAIChat();
   const { user, profile, logout } = useAuth();
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isAITyping]);
 
   const handleSend = async () => {
     if (!inputValue.trim() || isSending) return;
     
     const messageContent = inputValue.trim();
     setInputValue('');
+    
+    // Send user message
     await sendMessage(messageContent);
+    
+    // Generate and send AI response
+    try {
+      const aiResponse = await generateAIResponse(messageContent);
+      await sendMessage(aiResponse);
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -42,7 +54,7 @@ const Chat = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900">
+      <div className="flex h-screen items-center justify-center bg-gray-900">
         <div className="flex flex-col items-center space-y-4">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent"></div>
           <p className="text-white">Loading chat...</p>
@@ -52,7 +64,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-16">
+    <div className="flex h-screen bg-gray-900 pt-16">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -63,7 +75,7 @@ const Chat = () => {
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-80 bg-gray-800/90 backdrop-blur-sm border-r border-gray-700 
+        fixed lg:static inset-y-0 left-0 z-50 w-80 bg-gray-800 border-r border-gray-700 
         transform transition-transform duration-300 ease-in-out lg:transform-none pt-16 lg:pt-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         hidden lg:block
@@ -71,7 +83,7 @@ const Chat = () => {
         <div className="flex flex-col h-full p-4">
           {/* Sidebar Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">Global Chat</h2>
+            <h2 className="text-xl font-semibold text-white">Chats</h2>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-gray-400 hover:text-white"
@@ -80,27 +92,21 @@ const Chat = () => {
             </button>
           </div>
 
-          {/* User Info */}
-          <div className="bg-gray-700/50 rounded-lg p-4 mb-6">
-            <div className="flex items-center space-x-3">
-              <img
-                src={profile?.avatar_url}
-                alt="Avatar"
-                className="w-10 h-10 rounded-full bg-gray-600"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-medium truncate">{profile?.username}</p>
-                <p className="text-gray-400 text-sm truncate">{user?.email}</p>
-              </div>
+          {/* New Chat Button */}
+          <Button
+            variant="outline"
+            fullWidth
+            className="mb-6 border-gray-600 text-gray-300 hover:bg-gray-700"
+          >
+            + New Chat
+          </Button>
+
+          {/* Chat History - Placeholder */}
+          <div className="flex-1 space-y-2">
+            <div className="text-gray-400 text-sm mb-2">Recent Chats</div>
+            <div className="p-3 rounded-lg bg-gray-700/50 text-gray-300 text-sm cursor-pointer hover:bg-gray-700">
+              Global Chat Room
             </div>
-            <Button
-              onClick={logout}
-              variant="outline"
-              size="sm"
-              className="w-full mt-3 border-gray-600 text-gray-300 hover:bg-gray-800"
-            >
-              Logout
-            </Button>
           </div>
 
           {/* Download Section */}
@@ -110,7 +116,7 @@ const Chat = () => {
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
                 variant="outline"
                 fullWidth
-                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
               >
                 <Download size={16} className="mr-2" />
                 Download Chat
@@ -146,98 +152,121 @@ const Chat = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile Header */}
-        <div className="lg:hidden bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 p-4 flex items-center justify-between">
+        <div className="lg:hidden bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(true)}
             className="text-gray-400 hover:text-white"
           >
             <Menu size={24} />
           </button>
-          <h1 className="text-xl font-semibold text-white">Global Chat</h1>
-          <div className="w-6" /> {/* Spacer */}
+          <h1 className="text-xl font-semibold text-white">Chat</h1>
+          <div className="w-6" />
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-gray-400 text-lg mb-2">No messages yet</p>
-                <p className="text-gray-500">Be the first to start the conversation!</p>
+              <div className="text-center max-w-md p-8">
+                <Bot size={48} className="mx-auto mb-4 text-purple-400" />
+                <h2 className="text-2xl font-bold text-white mb-2">How can I help you today?</h2>
+                <p className="text-gray-400">Start a conversation by typing a message below. I'm here to assist you with questions, provide information, or just chat!</p>
               </div>
             </div>
           ) : (
-            messages.map((message) => (
-              <div key={message.id} className="animate-fade-in">
-                <div className={`flex items-start space-x-3 ${
-                  message.user_id === user?.id ? 'flex-row-reverse space-x-reverse' : ''
-                }`}>
-                  <img
-                    src={message.profiles.avatar_url}
-                    alt={message.profiles.username}
-                    className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0"
-                  />
-                  <div className={`max-w-xs lg:max-w-md xl:max-w-lg ${
-                    message.user_id === user?.id ? 'text-right' : ''
-                  }`}>
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-sm font-medium text-gray-300">
-                        {message.profiles.username}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {formatTime(message.created_at)}
-                      </span>
+            <div className="max-w-4xl mx-auto">
+              {messages.map((message, index) => {
+                const isUser = message.user_id === user?.id;
+                const isBot = message.profiles.username === 'Xel AI' || message.content.includes('AI');
+                
+                return (
+                  <div key={message.id} className={`py-6 px-4 ${index % 2 === 1 ? 'bg-gray-800/50' : ''}`}>
+                    <div className="flex items-start space-x-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        isBot ? 'bg-purple-600' : 'bg-gray-600'
+                      }`}>
+                        {isBot ? (
+                          <Bot size={16} className="text-white" />
+                        ) : (
+                          <User size={16} className="text-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="font-medium text-white">
+                            {isBot ? 'Xel AI' : message.profiles.username}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatTime(message.created_at)}
+                          </span>
+                        </div>
+                        <div className="text-gray-100 whitespace-pre-wrap break-words">
+                          {message.content}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`rounded-lg px-4 py-2 ${
-                      message.user_id === user?.id
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-                        : 'bg-gray-700 text-gray-100'
-                    }`}>
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                  </div>
+                );
+              })}
+              
+              {/* AI Typing Indicator */}
+              {isAITyping && (
+                <div className="py-6 px-4 bg-gray-800/50">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                      <Bot size={16} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="font-medium text-white">Xel AI</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <span className="text-gray-400 ml-2">Xel AI is typing...</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-700 bg-gray-800/50 backdrop-blur-sm p-4">
-          <div className="flex space-x-3">
-            <div className="flex-1">
-              <textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                rows={1}
-                style={{
-                  minHeight: '44px',
-                  maxHeight: '120px',
-                  height: 'auto',
-                }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
-                }}
-              />
+        <div className="border-t border-gray-700 bg-gray-900 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex space-x-4">
+              <div className="flex-1 relative">
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Message Xel AI..."
+                  className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 pr-12 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none max-h-32"
+                  rows={1}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+                  }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() || isSending || isAITyping}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isSending ? (
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <Send size={16} className="text-white" />
+                  )}
+                </button>
+              </div>
             </div>
-            <Button
-              onClick={handleSend}
-              disabled={!inputValue.trim() || isSending}
-              variant="glow"
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-4 py-3"
-            >
-              {isSending ? (
-                <div className="w-5 h-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <Send size={20} />
-              )}
-            </Button>
           </div>
         </div>
       </div>

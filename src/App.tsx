@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -45,7 +44,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
-          <div className="min-h-screen flex flex-col relative">
+          <div className="min-h-screen flex flex-col relative w-full">
             <ParticleBackground />
             <Navbar />
             <main className="flex-grow">
@@ -65,7 +64,9 @@ const App = () => (
                   path="/chat" 
                   element={
                     <ProtectedRoute>
-                      <Chat />
+                      <div className="h-screen">
+                        <Chat />
+                      </div>
                     </ProtectedRoute>
                   } 
                 />
@@ -73,7 +74,11 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
-            <Footer />
+            {/* Only show footer on non-chat pages */}
+            <Routes>
+              <Route path="/chat" element={null} />
+              <Route path="*" element={<Footer />} />
+            </Routes>
           </div>
         </BrowserRouter>
       </AuthProvider>
