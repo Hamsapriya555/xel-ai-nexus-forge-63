@@ -174,25 +174,6 @@ const Home = () => {
               </Link>
             </div>
           </div>
-          
-          <div 
-            className="mt-20 relative transition-all duration-1000 ease-out transform"
-            style={{ 
-              transitionDelay: '1s',
-              opacity: isLoaded ? 1 : 0,
-              transform: isLoaded ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.98)'
-            }}
-          >
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-secondary rounded-xl blur-sm opacity-30 animate-pulse-glow"></div>
-            <div className="relative bg-card/90 border border-border rounded-xl overflow-hidden shadow-2xl">
-              <div className="h-[400px] md:h-[500px] bg-xel-dark flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-lg text-muted-foreground mb-2">Interactive AI Chat Demo</p>
-                  <div className="typing-dots text-xl font-space-grotesk text-primary">Loading interface</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
