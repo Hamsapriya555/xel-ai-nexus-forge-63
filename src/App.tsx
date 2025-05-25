@@ -12,6 +12,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 import Home from "@/pages/Home";
 import AuthPage from "@/pages/AuthPage";
+import Chat from "@/pages/Chat";
 import Dashboard from "@/pages/Dashboard";
 import Community from "@/pages/Community";
 import NotFound from "@/pages/NotFound";
@@ -60,11 +61,25 @@ const App = () => (
                     </ProtectedRoute>
                   } 
                 />
+                <Route 
+                  path="/chat" 
+                  element={
+                    <ProtectedRoute>
+                      <div className="h-screen">
+                        <Chat />
+                      </div>
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route path="/community" element={<Community />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
-            <Footer />
+            {/* Only show footer on non-chat pages */}
+            <Routes>
+              <Route path="/chat" element={null} />
+              <Route path="*" element={<Footer />} />
+            </Routes>
           </div>
         </BrowserRouter>
       </AuthProvider>
